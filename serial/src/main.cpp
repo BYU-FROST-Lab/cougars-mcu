@@ -10,36 +10,33 @@
 #define ENABLE_BATTERY
 #define ENABLE_LEAK
 #define ENABLE_PRESSURE
-// #define ENABLE_BT_DEBUG
 
-#define BAUD_RATE 115200
+#define SERIAL_BAUD_RATE 115200
 
 // hardware pin values
-#define BT_MC_RX 34
-#define BT_MC_TX 35
-#define SERVO_PIN1 9
-#define SERVO_PIN2 10
-#define SERVO_PIN3 11
-#define THRUSTER_PIN 12
-// #define VOLT_PIN 27   //18
-// #define CURRENT_PIN 22   //17   //defined in teensy_params.h
-// #define LEAK_PIN 26       //16
-#define LED_PIN 13
+#define DBG_LED PA0
+#define BATT_V_SENSE PA1
+#define SRV1 PA2
+#define SRV2 PA3
+#define SRV3 PA4
+#define SRV4 PA6
+#define ESC PA7
+#define LEAK PA8
+#define STROBE PA11
+#define PWR_RELAY PA15
+#define CURR_SENSE PB0
 
 // default actuator positions
-#define DEFAULT_SERVO 90
-#define THRUSTER_OFF 1500
+
 
 // actuator conversion values
-// #define SERVO_OUT_HIGH 2000   //defined in teensy_params.h
-// #define SERVO_OUT_LOW 1000
-#define THRUSTER_OUT_HIGH 1900
-#define THRUSTER_OUT_LOW 1100
-#define THRUSTER_IN_HIGH 100
-#define THRUSTER_IN_LOW -100
+#define SERVO_OUT_US_MAX 2000   //servo output will lerp between min and max microseconds
+#define SERVO_OUT_US_MAX 1000
+#define THRUSTER_OUT_US_MAX 1900 //thruster output will lerp between min and max microseconds
+#define THRUSTER_OUT_US_MIN 1100 //thruster output will lerp between min and max microseconds
+#define THRUSTER_CMD_RANGE 200 //controls how the uC interprets thruster values. Will lerp from -range/2 to range/2
 
 // sensor baud rates
-#define BT_DEBUG_RATE 9600
 #define I2C_RATE 400000
 
 // sensor update rates
@@ -52,7 +49,6 @@
 unsigned long last_received = 0;
 
 // sensor objects
-SoftwareSerial BTSerial(BT_MC_RX, BT_MC_TX);
 MS5837 myPressure;
 
 // actuator objects
@@ -73,8 +69,8 @@ int bufferIndex = 0;
 bool newData = false;
 
 void setup() {
-  Serial.begin(BAUD_RATE);
-  Serial.print("Teensy Program Started");
+  Serial.begin(SERIAL_BAUD_RATE);
+  Serial.print("microcontroller begun");
 
   // set up the indicator light
   pinMode(LED_PIN, OUTPUT);
