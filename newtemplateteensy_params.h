@@ -10,3 +10,6 @@
 #define PRESSURE_10M      // COUG2 has 10m depth pressure sensor
 #define DEFAULT_SERVO_POSITION 90 //default servo position before any commands
 #define THRUSTER_DEFAULT_OUT 1500 //default value written to the thruster
+//note: servo timings are currently not implemented and do nothing
+#define SERVO_OUT_US_MAX 2000 // check servo ratings for pwm microsecond values
+#define SERVO_OUT_US_MIN 1000 // change per servo type COUG1 is 500-2500 COUG2 is 1000-2000

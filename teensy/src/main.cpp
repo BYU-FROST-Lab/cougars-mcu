@@ -5,38 +5,42 @@
 #include "MS5837.h"
 #include "/home/frostlab/config/teensy_params.h"
 
+#define NAMESPACE "coug0" // ex. "coug0"
+#define VOLT_PIN 27   //pins on the teensy for the battery monitor
+#define CURRENT_PIN 22   //pins on the teensy for the battery monitor
+#define LEAK_PIN 26       //pins on the teensy for the leak sensor
+
 #define ENABLE_SERVOS
 #define ENABLE_THRUSTER
 #define ENABLE_BATTERY
 #define ENABLE_LEAK
 #define ENABLE_PRESSURE
+// #define ENABLE_BT_DEBUG
 
-#define SERIAL_BAUD_RATE 115200
+#define BAUD_RATE 115200
 
 // hardware pin values
-#define DBG_LED PA0
-#define BATT_V_SENSE PA1
-#define SRV1 PA2
-#define SRV2 PA3
-#define SRV3 PA4
-#define SRV4 PA6
-#define ESC PA7
-#define LEAK PA8
-#define STROBE PA11
-#define PWR_RELAY PA15
-#define CURR_SENSE PB0
-
-// default actuator positions
-
+#define BT_MC_RX 34
+#define BT_MC_TX 35
+#define SERVO_PIN1 9
+#define SERVO_PIN2 10
+#define SERVO_PIN3 11
+#define THRUSTER_PIN 12
+// #define VOLT_PIN 27   //18
+// #define CURRENT_PIN 22   //17   //defined in teensy_params.h
+// #define LEAK_PIN 26       //16
+#define LED_PIN 13
 
 // actuator conversion values
-#define SERVO_OUT_US_MAX 2000   //servo output will lerp between min and max microseconds
-#define SERVO_OUT_US_MAX 1000
-#define THRUSTER_OUT_US_MAX 1900 //thruster output will lerp between min and max microseconds
-#define THRUSTER_OUT_US_MIN 1100 //thruster output will lerp between min and max microseconds
-#define THRUSTER_CMD_RANGE 200 //controls how the uC interprets thruster values. Will lerp from -range/2 to range/2
+#define THRUSTER_OUT_HIGH 1900
+#define THRUSTER_OUT_LOW 1100
+#define THRUSTER_IN_MAX 100
+#define THRUSTER_IN_MIN -100
+#define SERVO_IN_MIN -90
+#define SERVO_IN_MAX 90
 
 // sensor baud rates
+#define BT_DEBUG_RATE 9600
 #define I2C_RATE 400000
 
 // sensor update rates
@@ -49,6 +53,7 @@
 unsigned long last_received = 0;
 
 // sensor objects
+SoftwareSerial BTSerial(BT_MC_RX, BT_MC_TX);
 MS5837 myPressure;
 
 // actuator objects
@@ -69,9 +74,9 @@ int bufferIndex = 0;
 bool newData = false;
 
 void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);
-  Serial.print("microcontroller begun");
-
+  Serial.begin(BAUD_RATE);
+  Serial.print("Teensy Program Started");
+  
   // set up the indicator light
   pinMode(LED_PIN, OUTPUT);
 
@@ -85,9 +90,9 @@ void setup() {
     myServo2.attach(SERVO_PIN2,1000,2000);
     myServo3.attach(SERVO_PIN3, 1000, 2000);
 
-    myServo1.write(DEFAULT_SERVO);
-    myServo2.write(DEFAULT_SERVO);
-    myServo3.write(DEFAULT_SERVO);
+    myServo1.write(DEFAULT_SERVO_POSITION);
+    myServo2.write(DEFAULT_SERVO_POSITION);
+    myServo3.write(DEFAULT_SERVO_POSITION);
 
     #ifdef ENABLE_BT_DEBUG
       Serial.println("[INFO] Servos enabled");
@@ -97,7 +102,7 @@ void setup() {
   #ifdef ENABLE_THRUSTER
     pinMode(THRUSTER_PIN, OUTPUT);
     myThruster.attach(THRUSTER_PIN, 1000, 2000);
-    myThruster.writeMicroseconds(THRUSTER_OFF);
+    myThruster.writeMicroseconds(THRUSTER_DEFAULT_OUT);
     delay(7000);
 
     #ifdef ENABLE_BT_DEBUG
@@ -172,7 +177,7 @@ void recvWithEndMarker() {
 
 // Function to convert float (-90 to 90) to int centered around positive 90
 int convertToInt(float value) {
-  int intValue = static_cast<int>(value + DEFAULT_SERVO);
+  int intValue = static_cast<int>(value + DEFAULT_SERVO_POSITION);
   return intValue;
 }
 
@@ -181,7 +186,7 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
   last_received = millis();
 
   #ifdef ENABLE_SERVOS
-    int intFin1 = DEFAULT_SERVO, intFin2 = DEFAULT_SERVO, intFin3 = DEFAULT_SERVO;
+    int intFin1 = DEFAULT_SERVO_POSITION, intFin2 = DEFAULT_SERVO_POSITION, intFin3 = DEFAULT_SERVO_POSITION;
     
     intFin1 = convertToInt(servo1);
     intFin2 = convertToInt(servo2);
@@ -190,13 +195,13 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
     //TODO make sure this matches the fin convention for pitch up and yaw starboard for positive
     //DECIDE WHETHERE TO MAX OUT THE FINS HERE OR IN THE NODE?
 
-    myServo1.write(intFin1);
-    myServo2.write(intFin2);
-    myServo3.write(intFin3);
+    myServo1.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
+    myServo2.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
+    myServo3.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
   #endif
   
   #ifdef ENABLE_THRUSTER
-    int usecThruster = map(thruster, THRUSTER_IN_LOW, THRUSTER_IN_HIGH, THRUSTER_OUT_LOW, THRUSTER_OUT_HIGH);
+    int usecThruster = map(thruster, THRUSTER_IN_MIN, THRUSTER_IN_MAX, THRUSTER_OUT_LOW, THRUSTER_OUT_HIGH);
     myThruster.writeMicroseconds(usecThruster); //Thruster Value from 1100-1900
   #endif // ENABLE_THRUSTER
 
@@ -298,13 +303,13 @@ void full_loop() {
   if (millis() - last_received > ACTUATOR_TIMEOUT) {
 
     #ifdef ENABLE_SERVOS
-        myServo1.write(DEFAULT_SERVO);
-        myServo2.write(DEFAULT_SERVO);
-        myServo3.write(DEFAULT_SERVO);
+        myServo1.write(DEFAULT_SERVO_POSITION);
+        myServo2.write(DEFAULT_SERVO_POSITION);
+        myServo3.write(DEFAULT_SERVO_POSITION);
     #endif // ENABLE_SERVOS
 
     #ifdef ENABLE_THRUSTER
-        myThruster.writeMicroseconds(THRUSTER_OFF);
+        myThruster.writeMicroseconds(THRUSTER_DEFAULT_OUT);
     #endif // ENABLE_THRUSTER
 
     #ifdef ENABLE_BT_DEBUG

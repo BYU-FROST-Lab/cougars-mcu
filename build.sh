@@ -1,28 +1,32 @@
 #!/bin/bash
-# Created by Nelson Durrant, Sep 2024
-#
-# Builds the firmware.hex file from the PIO workspace
-
-
-
-echo "Select an option to build:"
-echo "1. NMEA"
-echo "2. micrros"
-read -p "Enter your choice (1 or 2): " choice
-
-case $choice in
+# Created by Eli Gaskin Jan 2026
+# detects whether hardware is on the CM5 (mainboard) or pi 5 (old) and builds for the respective solution
+#using -f will allow you to force a certain build
+TEENSY_DIRECTORY="~/teensy_ws/teensy"
+STM_DIRECTORY="~/teensy_ws/stm"
+if [ "$1" = "-f" ]; then
+    read -p "forcing build, input 1 to build for the stm32 or 2 to build for the teensy " buildop
+    case $buildop in
     1)
-        cd ~/teensy_ws/serial
-        echo "Running NMEA build command..."
+        echo "building for the stm32"
+        cd $STM_DIRECTORY
         ;;
     2)
-        cd ~/teensy_ws/cougars
-        echo "Running micrros build command..."
+        cd $TEENSY_DIRECTORY
+        echo "building for the teensy"
         ;;
     *)
-        echo "Invalid choice. Please run the script again and select 1 or 2."
-        exit 1
-        ;;
-esac
-
+        echo "bad input $buildop"
+        exit 0
+    esac
+else
+if grep -qi Compute /sys/firmware/devicetree/base/model; then
+    echo "cm5 detected, building for stm32"
+    cd $STM_DIRECTORY
+    
+else
+    echo "pi 5 detected, building for teensy 4.1"
+    cd $TEENSY_DIRECTORY
+fi
+fi
 pio run

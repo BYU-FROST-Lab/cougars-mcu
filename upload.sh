@@ -1,38 +1,49 @@
 #!/bin/bash
-# Created by Nelson Durrant, Sep 2024
-#
-# Uploads hex files to the Teensy 4.1 board
-# - Specify a file in firmware_options using 'bash upload.sh <file.hex>'
-# - If this fails, check the USB connections and the current teensy power states
+# Created by Eli Gaskin Jan 2026
+# detects whether hardware is on the CM5 (mainboard) or pi 5 (old) and builds for the respective solution
+#using -f will allow you to force a certain upload method
 
-bash ~/gpio/power.sh on
+# TODO: IMPLEMENT STM UPLOADING, teensy testing
 
-echo "Select an option to build:"
-echo "1. NMEA"
-echo "2. micrros"
-read -p "Enter your choice (1 or 2): " choice
-
-case $choice in
+TEENSY_DIRECTORY="~/teensy_ws/teensy"
+STM_DIRECTORY="~/teensy_ws/stm"
+if [ "$1" = "-f" ]; then
+    read -p "forcing build, input 1 to build for the stm32 or 2 to build for the teensy " buildop
+    case $buildop in
     1)
-        DIRECTORY="$HOME/teensy_ws/serial"
+        echo "building for the stm32"
+        cd $STM_DIRECTORY
         ;;
     2)
-        DIRECTORY="$HOME/teensy_ws/cougars"
+        cd $TEENSY_DIRECTORY
+        echo "uploading to the teensy whatever's in the PIO build directory"
+        python3 ~/gpio/gpio_tools/program.py
+        tycmd upload $TEENSY_DIRECTORY/.pio/build/teensy41/firmware.hex
         ;;
     *)
-        echo "Invalid choice. Please run the script again and select 1 or 2."
-        exit 1
-        ;;
-esac
+        echo "bad input $buildop"
+        exit 0
+    esac
+else
 
-case $1 in
-    "")
-        python3 ~/gpio/gpio_tools/program.py
-        tycmd upload $DIRECTORY/.pio/build/teensy41/firmware.hex
-        ;;
-    *)
-        python3 ~/gpio/gpio_tools/program.py
-        cd ~/teensy_ws/firmware_options
-        tycmd upload $1
-        ;;
-esac
+    if grep -qi Compute /sys/firmware/devicetree/base/model; then
+        echo "cm5 detected, building for stm32"
+        cd $STM_DIRECTORY
+        
+    else
+        echo "pi 5 detected, uploading to the teensy 4.1"
+        cd $TEENSY_DIRECTORY
+        case $1 in
+            "")
+                python3 ~/gpio/gpio_tools/program.py
+                tycmd upload $TEENSY_DIRECTORY/.pio/build/teensy41/firmware.hex
+                ;;
+            *)
+                python3 ~/gpio/gpio_tools/program.py
+                cd $TEENSY_DIRECTORY/../firmware_options
+                tycmd upload $1
+                ;;
+        esac
+    fi
+
+fi

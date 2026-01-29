@@ -26,12 +26,14 @@
 #define PWR_RELAY PA15
 #define CURR_SENSE PB0
 
-// default actuator positions
-
 
 // actuator conversion values
+#define SERVO_IN_MIN -90
+#define SERVO_IN_MAX 90
+#define THRUSTER_IN_MAX 100
+#define THRUSTER_IN_MIN -100
 #define SERVO_OUT_US_MAX 2000   //servo output will lerp between min and max microseconds
-#define SERVO_OUT_US_MAX 1000
+#define SERVO_OUT_US_MIN 1000
 #define THRUSTER_OUT_US_MAX 1900 //thruster output will lerp between min and max microseconds
 #define THRUSTER_OUT_US_MIN 1100 //thruster output will lerp between min and max microseconds
 #define THRUSTER_CMD_RANGE 200 //controls how the uC interprets thruster values. Will lerp from -range/2 to range/2
@@ -85,9 +87,9 @@ void setup() {
     myServo2.attach(SERVO_PIN2,1000,2000);
     myServo3.attach(SERVO_PIN3, 1000, 2000);
 
-    myServo1.write(DEFAULT_SERVO);
-    myServo2.write(DEFAULT_SERVO);
-    myServo3.write(DEFAULT_SERVO);
+    myServo1.write(DEFAULT_SERVO_POSITION);
+    myServo2.write(DEFAULT_SERVO_POSITION);
+    myServo3.write(DEFAULT_SERVO_POSITION);
 
     #ifdef ENABLE_BT_DEBUG
       Serial.println("[INFO] Servos enabled");
@@ -172,7 +174,7 @@ void recvWithEndMarker() {
 
 // Function to convert float (-90 to 90) to int centered around positive 90
 int convertToInt(float value) {
-  int intValue = static_cast<int>(value + DEFAULT_SERVO);
+  int intValue = static_cast<int>(value + DEFAULT_SERVO_POSITION);
   return intValue;
 }
 
@@ -181,7 +183,7 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
   last_received = millis();
 
   #ifdef ENABLE_SERVOS
-    int intFin1 = DEFAULT_SERVO, intFin2 = DEFAULT_SERVO, intFin3 = DEFAULT_SERVO;
+    int intFin1 = DEFAULT_SERVO_POSITION, intFin2 = DEFAULT_SERVO_POSITION, intFin3 = DEFAULT_SERVO_POSITION;
     
     intFin1 = convertToInt(servo1);
     intFin2 = convertToInt(servo2);
@@ -189,14 +191,14 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
 
     //TODO make sure this matches the fin convention for pitch up and yaw starboard for positive
     //DECIDE WHETHERE TO MAX OUT THE FINS HERE OR IN THE NODE?
-
-    myServo1.write(intFin1);
-    myServo2.write(intFin2);
-    myServo3.write(intFin3);
+    
+    myServo1.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
+    myServo2.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
+    myServo3.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
   #endif
   
   #ifdef ENABLE_THRUSTER
-    int usecThruster = map(thruster, THRUSTER_IN_LOW, THRUSTER_IN_HIGH, THRUSTER_OUT_LOW, THRUSTER_OUT_HIGH);
+    int usecThruster = map(thruster, THRUSTER_IN_MIN, THRUSTER_IN_MAX, THRUSTER_OUT_US_MIN, THRUSTER_OUT_US_MAX);
     myThruster.writeMicroseconds(usecThruster); //Thruster Value from 1100-1900
   #endif // ENABLE_THRUSTER
 
@@ -298,9 +300,9 @@ void full_loop() {
   if (millis() - last_received > ACTUATOR_TIMEOUT) {
 
     #ifdef ENABLE_SERVOS
-        myServo1.write(DEFAULT_SERVO);
-        myServo2.write(DEFAULT_SERVO);
-        myServo3.write(DEFAULT_SERVO);
+        myServo1.write(DEFAULT_SERVO_POSITION);
+        myServo2.write(DEFAULT_SERVO_POSITION);
+        myServo3.write(DEFAULT_SERVO_POSITION);
     #endif // ENABLE_SERVOS
 
     #ifdef ENABLE_THRUSTER
