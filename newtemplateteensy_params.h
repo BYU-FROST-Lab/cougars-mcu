@@ -13,3 +13,9 @@
 //note: servo timings are currently not implemented and do nothing
 #define SERVO_OUT_US_MAX 2000 // check servo ratings for pwm microsecond values
 #define SERVO_OUT_US_MIN 1000 // change per servo type COUG1 is 500-2500 COUG2 is 1000-2000
+
+#define ENABLE_SERVOS
+#define ENABLE_THRUSTER
+#define ENABLE_BATTERY
+#define ENABLE_LEAK
+#define ENABLE_PRESSURE

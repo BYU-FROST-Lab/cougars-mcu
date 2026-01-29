@@ -6,26 +6,26 @@
 
 #ifdef ONBOARD //build arg passed to platformio in the upload script
 
-#include "/home/frostlab/config/teensy_params.h"
+  #include "/home/frostlab/config/teensy_params.h"
 
-#else // for testing on PC
+#else // for testing on PC, should be copy of the template teensy_params.h
 
-#define PRESSURE_30M   // COUG1 has 30m depth pressure sensor (Comment out one you don't need)
-#define PRESSURE_10M      // COUG2 has 10m depth pressure sensor
-#define DEFAULT_SERVO_POSITION 90 //default servo position before any commands
-#define THRUSTER_DEFAULT_OUT 1500 //default value written to the thruster
-//note: servo timings are currently not implemented and do nothing
-#define SERVO_OUT_US_MAX 2000 // check servo ratings for pwm microsecond values
-#define SERVO_OUT_US_MIN 1000 // change per servo type COUG1 is 500-2500 COUG2 is 1000-2000
+  #define PRESSURE_30M   // COUG1 has 30m depth pressure sensor (Comment out one you don't need)
+  #define PRESSURE_10M      // COUG2 has 10m depth pressure sensor
+  #define DEFAULT_SERVO_POSITION 90 //default servo position before any commands
+  #define THRUSTER_DEFAULT_OUT 1500 //default value written to the thruster
+  //note: servo timings are currently not implemented and do nothing
+  #define SERVO_OUT_US_MAX 2000 // check servo ratings for pwm microsecond values
+  #define SERVO_OUT_US_MIN 1000 // change per servo type COUG1 is 500-2500 COUG2 is 1000-2000
+
+  #define ENABLE_SERVOS
+  #define ENABLE_THRUSTER
+  #define ENABLE_BATTERY
+  #define ENABLE_LEAK
+  #define ENABLE_PRESSURE
 
 #endif
 
-
-#define ENABLE_SERVOS
-#define ENABLE_THRUSTER
-#define ENABLE_BATTERY
-#define ENABLE_LEAK
-#define ENABLE_PRESSURE
 
 #define SERIAL_BAUD_RATE 115200
 
@@ -48,8 +48,6 @@
 #define SERVO_IN_MAX 90
 #define THRUSTER_IN_MAX 100
 #define THRUSTER_IN_MIN -100
-#define SERVO_OUT_US_MAX 2000   //servo output will lerp between min and max microseconds
-#define SERVO_OUT_US_MIN 1000
 #define THRUSTER_OUT_US_MAX 1900 //thruster output will lerp between min and max microseconds
 #define THRUSTER_OUT_US_MIN 1100 //thruster output will lerp between min and max microseconds
 #define THRUSTER_CMD_RANGE 200 //controls how the uC interprets thruster values. Will lerp from -range/2 to range/2
@@ -99,9 +97,9 @@ void setup() {
     pinMode(SRV2, OUTPUT);
     pinMode(SRV3, OUTPUT);
 
-    myServo1.attach(SRV1,1000,2000);
-    myServo2.attach(SRV2,1000,2000);
-    myServo3.attach(SRV3, 1000, 2000);
+    myServo1.attach(SRV1,SERVO_OUT_US_MIN,SERVO_OUT_US_MAX);
+    myServo2.attach(SRV2,SERVO_OUT_US_MIN,SERVO_OUT_US_MAX);
+    myServo3.attach(SRV3,SERVO_OUT_US_MIN,SERVO_OUT_US_MAX);
 
     myServo1.write(DEFAULT_SERVO_POSITION);
     myServo2.write(DEFAULT_SERVO_POSITION);
@@ -128,8 +126,8 @@ void setup() {
   Wire.setClock(I2C_RATE);
 
   #ifdef ENABLE_BATTERY
-  pinMode(CURRENT_PIN, INPUT);
-  pinMode(VOLT_PIN, INPUT);
+  pinMode(CURR_SENSE, INPUT);
+  pinMode(BATT_V_SENSE, INPUT);
 
     #ifdef ENABLE_BT_DEBUG
       Serial.println("[INFO] Battery Sensor enabled");
@@ -137,7 +135,7 @@ void setup() {
   #endif // ENABLE_BATTERY
 
   #ifdef ENABLE_LEAK
-  pinMode(LEAK_PIN, INPUT);
+  pinMode(LEAK, INPUT);
 
     #ifdef ENABLE_BT_DEBUG
       Serial.println("[INFO] Leak Sensor enabled");
@@ -208,9 +206,9 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
     //TODO make sure this matches the fin convention for pitch up and yaw starboard for positive
     //DECIDE WHETHERE TO MAX OUT THE FINS HERE OR IN THE NODE?
     
-    myServo1.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
-    myServo2.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
-    myServo3.writeMicroseconds(map(intFin1, SERVO_IN_MIN, SERVO_IN_MAX, SERVO_OUT_US_MIN, SERVO_OUT_US_MAX));
+    myServo1.writeMicroseconds(intFin1);
+    myServo2.writeMicroseconds(intFin2);
+    myServo3.writeMicroseconds(intFin3);
   #endif
   
   #ifdef ENABLE_THRUSTER
@@ -267,8 +265,8 @@ void read_battery() {
 
   // we did some testing to determine the below params, but
   // it's possible they are not completely accurate
-  float voltage = (analogRead(VOLT_PIN) * 0.03437) + 0.68;
-  float current = (analogRead(CURRENT_PIN) * 0.122) - 11.95;
+  float voltage = (analogRead(BATT_V_SENSE) * 0.03437) + 0.68;
+  float current = (analogRead(CURR_SENSE) * 0.122) - 11.95;
 
   // publish the battery data
   Serial.print("$BATTE,");
@@ -284,7 +282,7 @@ void read_battery() {
  */
 void read_leak() {
 
-  int leak = digitalRead(LEAK_PIN);
+  int leak = digitalRead(LEAK);
 
   // publish the leak data
   Serial.print("$LEAK,");
