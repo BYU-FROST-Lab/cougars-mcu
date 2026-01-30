@@ -11,6 +11,8 @@ import sys
 sys.path.append('/home/frostlab/config')
 
 from gpio_def import *
+#import os
+# print(os.environ['HOME'])
 
 # open the gpio chip and set the on/off pin as output
 chip = gpiod.Chip(GPIO_CHIP)

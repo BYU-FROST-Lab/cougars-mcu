@@ -8,10 +8,10 @@
 TEENSY_DIRECTORY="~/teensy_ws/teensy"
 STM_DIRECTORY="~/teensy_ws/stm"
 if [ "$1" = "-f" ]; then
-    read -p "forcing build, input 1 to build for the stm32 or 2 to build for the teensy " buildop
+    read -p "forcing upload, input 1 to build for the stm32 or 2 to build for the teensy " buildop
     case $buildop in
     1)
-        echo "building for the stm32"
+        echo "uploading to the stm32"
         cd $STM_DIRECTORY
         ;;
     2)
@@ -25,14 +25,27 @@ if [ "$1" = "-f" ]; then
         exit 0
     esac
 else
-
-    if grep -qi Compute /sys/firmware/devicetree/base/model; then
-        echo "cm5 detected, building for stm32"
-        cd $STM_DIRECTORY
-        
+    if [[-v UCONTROLLER ]] then
+        if [[ $UCONTROLLER = "STM" ]];
+            echo "building for stm32"
+            cd $STM_DIRECTORY
+        else
+            echo "building for teensy 4.1"
+            cd $TEENSY_DIRECTORY
+            case $1 in
+                "")
+                    python3 ~/gpio/gpio_tools/program.py
+                    tycmd upload $TEENSY_DIRECTORY/.pio/build/teensy41/firmware.hex
+                    ;;
+                *)
+                    python3 ~/gpio/gpio_tools/program.py
+                    cd $TEENSY_DIRECTORY/../firmware_options
+                    tycmd upload $1
+                    ;;
+            esac
+        fi
     else
-        echo "pi 5 detected, uploading to the teensy 4.1"
-        cd $TEENSY_DIRECTORY
+        echo "UCONTROLLER not set, defaulting to building for teensy 4.1"
         case $1 in
             "")
                 python3 ~/gpio/gpio_tools/program.py

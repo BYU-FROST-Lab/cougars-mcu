@@ -7,7 +7,7 @@
  *   is updated as well
  */
 #define PRESSURE_30M   // COUG1 has 30m depth pressure sensor (Comment out one you don't need)
-#define PRESSURE_10M      // COUG2 has 10m depth pressure sensor
+// #define PRESSURE_10M      // COUG2 has 10m depth pressure sensor
 #define DEFAULT_SERVO_POSITION 90 //default servo position before any commands
 #define THRUSTER_DEFAULT_OUT 1500 //default value written to the thruster
 //note: servo timings are currently not implemented and do nothing
