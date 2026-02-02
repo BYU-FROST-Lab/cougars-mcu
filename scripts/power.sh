@@ -18,21 +18,30 @@ function printError {
 
 case $1 in
     "on")
-        if [ -z "$(tycmd list | grep Teensy)" ]; then
-            python3 ~/gpio/gpio_tools/toggle_power.py
+        if [[ $UCONTROLLER = "STM" ]];
+            echo "resetting stm32, turning on via pin $STM_RST_GPIO"
+            sudo pinctrl set $STM_RST_GPIO op dl
+            sleep 0.1
+            sudo pinctrl set $STM_RST_GPIO op dh
         else
-            printWarning "Teensy is already powered on"
+            echo "resetting, turning on Teensy via pin $POWER_PIN"
+            sudo pinctrl set $POWER_PIN op dl
+            sleep 0.1
+            sudo pinctrl set $POWER_PIN op dh
         fi
+
         ;;
     "off")
-        if [ -z "$(tycmd list | grep Teensy)" ]; then
-            printWarning "Teensy is already powered off"
+        if [[ $UCONTROLLER = "STM" ]];
+            echo "turning off stm32 via pin $STM_RST_GPIO"
+            sudo pinctrl set $STM_RST_GPIO op dl
         else
-            python3 ~/gpio/gpio_tools/toggle_power.py
+            echo "turning off Teensy via pin $POWER_PIN"
+            sudo pinctrl set $POWER_PIN op dl
         fi
         ;;
     *)
         printError "No power state specified"
-        printError "Specify a power state using 'bash power.sh <state>'"
+        printError "Specify a power state using 'bash power.sh <state on/off>'"
         ;;
 esac

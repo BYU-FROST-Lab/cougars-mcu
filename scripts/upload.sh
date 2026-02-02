@@ -7,12 +7,14 @@
 
 TEENSY_DIRECTORY="~/mcu_ws/teensy"
 STM_DIRECTORY="~/mcu_ws/stm"
-if [ "$1" = "-f" ]; then
+if [[ "$1" = "-f" ]]; then
     read -p "forcing upload, input 1 to build for the stm32 or 2 to build for the teensy " buildop
     case $buildop in
     1)
         echo "uploading to the stm32"
         cd $STM_DIRECTORY
+        # build arg to signal that it's being built on the actual board/docker container
+        pio run -t upload --program-arg "ONBOARD" 
         ;;
     2)
         cd $TEENSY_DIRECTORY
@@ -25,34 +27,21 @@ if [ "$1" = "-f" ]; then
         exit 0
     esac
 else
-    if [[-v UCONTROLLER ]] then
-        if [[ $UCONTROLLER = "STM" ]];
-            echo "building for stm32"
-            cd $STM_DIRECTORY
-        else
-            echo "building for teensy 4.1"
-            cd $TEENSY_DIRECTORY
-            case $1 in
-                "")
-                    python3 ~/gpio/gpio_tools/program.py
-                    tycmd upload $TEENSY_DIRECTORY/.pio/build/teensy41/firmware.hex
-                    ;;
-                *)
-                    python3 ~/gpio/gpio_tools/program.py
-                    cd $TEENSY_DIRECTORY/../firmware_options
-                    tycmd upload $1
-                    ;;
-            esac
-        fi
+    if [[ $UCONTROLLER = "STM" ]];
+        echo "building for stm32"
+        cd $STM_DIRECTORY
+        # build arg to signal that it's being built on the actual board/docker container
+        pio run -t upload --program-arg "ONBOARD" 
     else
-        echo "UCONTROLLER not set, defaulting to building for teensy 4.1"
+        echo "building for teensy 4.1"
+        cd $TEENSY_DIRECTORY
         case $1 in
             "")
-                python3 ~/gpio/gpio_tools/program.py
+                bash $TEENSY_DIRECTORY/program_mode.sh
                 tycmd upload $TEENSY_DIRECTORY/.pio/build/teensy41/firmware.hex
                 ;;
             *)
-                python3 ~/gpio/gpio_tools/program.py
+                bash $TEENSY_DIRECTORY/program_mode.sh
                 cd $TEENSY_DIRECTORY/../firmware_options
                 tycmd upload $1
                 ;;

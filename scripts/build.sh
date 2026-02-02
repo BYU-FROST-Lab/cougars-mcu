@@ -21,17 +21,12 @@ if [[ "$1" = "-f" ]]; then
         exit 0
     esac
 else
-    if [[-v UCONTROLLER ]] then
-        if [[ $UCONTROLLER = "STM" ]];
-            echo "building for stm32"
-            cd $STM_DIRECTORY
-        else
-            echo "building for teensy 4.1"
-            cd $TEENSY_DIRECTORY
-        fi
+    if [[ $UCONTROLLER = "STM" ]];
+        echo "building for stm32"
+        cd $STM_DIRECTORY
     else
-        echo "UCONTROLLER not set, defaulting to building for teensy 4.1"
+        echo "building for teensy 4.1"
         cd $TEENSY_DIRECTORY
     fi
 fi
-pio run
+pio run #build

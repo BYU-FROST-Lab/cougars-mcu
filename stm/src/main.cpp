@@ -2,7 +2,6 @@
 #include <Servo.h> //arduinostm32 framework default library
 #include <SoftwareSerial.h>
 #include <Wire.h>
-#include "MS5837.h"
 
 #ifdef ONBOARD //build arg passed to platformio in the upload script
 
@@ -18,11 +17,15 @@
   #define SERVO_OUT_US_MAX 2000 // check servo ratings for pwm microsecond values
   #define SERVO_OUT_US_MIN 1000 // change per servo type COUG1 is 500-2500 COUG2 is 1000-2000
 
-  #define ENABLE_SERVOS
-  #define ENABLE_THRUSTER
-  #define ENABLE_BATTERY
-  #define ENABLE_LEAK
-  #define ENABLE_PRESSURE
+  #define ENABLE_SERVOS true
+  #define ENABLE_THRUSTER true
+  #define ENABLE_BATTERY true
+  #define ENABLE_LEAK true
+  #define ENABLE_PRESSURE true
+// unused by new board
+  #define VOLT_PIN 27   //pins on the teensy for the battery monitor
+  #define CURRENT_PIN 22   //pins on the teensy for the battery monitor
+  #define LEAK_PIN 26       //pins on the teensy for the leak sensor
 
 #endif
 
@@ -58,14 +61,12 @@
 // sensor update rates
 #define BATTERY_MS 1000 // arbitrary
 #define LEAK_MS 1000    // arbitrary
-#define PRESSURE_MS 20  // fastest update speed is 50 Hz
 
 #define ACTUATOR_TIMEOUT 5000
 // time of last received command (used as a fail safe)
 unsigned long last_received = 0;
 
-// sensor objects
-MS5837 myPressure;
+
 
 // actuator objects
 Servo myServo1;
@@ -74,7 +75,6 @@ Servo myServo3;
 Servo myThruster;
 
 // Global sensor variables
-float pressure = 0;
 float conversionFactor = 100.0f;
 float temperature = 0.0;
 
@@ -84,14 +84,23 @@ char inputBuffer[BUFFER_SIZE];
 int bufferIndex = 0;
 bool newData = false;
 
+uint16_t blink_tmr=0;
+uint8_t b_code=0;
+uint8_t b_state=0;
+
+void blink_code(uint8_t code);
+void blink_callback();
+
 void setup() {
-  Serial.begin(SERIAL_BAUD_RATE);
-  Serial.print("microcontroller begun");
-
-  // set up the indicator light
+    blink_code(0);
+    blink_callback();
+    Serial.begin(SERIAL_BAUD_RATE);
+    Serial.print("microcontroller begun");
   pinMode(DBG_LED, OUTPUT);
+  pinMode(PWR_RELAY,OUTPUT);
+  digitalWrite(PWR_RELAY,0);
 
-  #ifdef ENABLE_SERVOS
+  if(ENABLE_SERVOS){
     // Set up the servo and thruster pins
     pinMode(SRV1, OUTPUT);
     pinMode(SRV2, OUTPUT);
@@ -104,64 +113,77 @@ void setup() {
     myServo1.write(DEFAULT_SERVO_POSITION);
     myServo2.write(DEFAULT_SERVO_POSITION);
     myServo3.write(DEFAULT_SERVO_POSITION);
+  }
 
-    #ifdef ENABLE_BT_DEBUG
-      Serial.println("[INFO] Servos enabled");
-    #endif // ENABLE_BT_DEBUG
-  #endif // ENABLE_SERVOS
-
-  #ifdef ENABLE_THRUSTER
+  if(ENABLE_THRUSTER){
     pinMode(ESC, OUTPUT);
     myThruster.attach(ESC, 1000, 2000);
     myThruster.writeMicroseconds(THRUSTER_DEFAULT_OUT);
     delay(7000);
-
-    #ifdef ENABLE_BT_DEBUG
-        Serial.println("[INFO] Thruster enabled");
-    #endif // ENABLE_BT_DEBUG
-  #endif // ENABLE_THRUSTER
+  }
 
   // Setup Depth sensor
   Wire.begin();
   Wire.setClock(I2C_RATE);
 
-  #ifdef ENABLE_BATTERY
-  pinMode(CURR_SENSE, INPUT);
+  if(ENABLE_BATTERY){
+      pinMode(CURR_SENSE, INPUT);
   pinMode(BATT_V_SENSE, INPUT);
+  }
 
-    #ifdef ENABLE_BT_DEBUG
-      Serial.println("[INFO] Battery Sensor enabled");
-    #endif // ENABLE_BT_DEBUG
-  #endif // ENABLE_BATTERY
-
-  #ifdef ENABLE_LEAK
+  if(ENABLE_LEAK){
   pinMode(LEAK, INPUT);
-
-    #ifdef ENABLE_BT_DEBUG
-      Serial.println("[INFO] Leak Sensor enabled");
-    #endif // ENABLE_BT_DEBUG
-  #endif // ENABLE_LEAK
+  }
   
-  #ifdef ENABLE_PRESSURE
-    while (!myPressure.init()) {
-      Serial.println("ERROR: Could not connect to Pressure Sensor over I2C");
-      delay(1000);
+}
+
+void blink_code(uint8_t code){
+  b_code=code;
+  b_state=0;
+  blink_tmr=0;
+}
+
+void blink_callback(){
+  switch(b_code){
+    case 0: //nominal, const on
+    digitalWrite(DBG_LED,HIGH);
+    break;
+    case 1: //blink once, return to state 0
+    digitalWrite(DBG_LED,LOW);
+    if(blink_tmr>200){
+      b_code=0;
+      blink_tmr=0;
     }
-    
-  #ifdef PRESSURE_10M
-    myPressure.setModel(MS5837::MS5837_02BA);
-    // myPressure.setModel(MS5837::MS5837_30BA);
-  #endif 
-
-  #ifdef PRESSURE_30M
-  myPressure.setModel(MS5837::MS5837_30BA);
-  #endif
-
-    #ifdef ENABLE_BT_DEBUG
-      Serial.println("[INFO] Pressure Sensor enabled");
-    #endif // ENABLE_BT_DEBUG
-    //TODO: Make define for the other model of depth sensor
-  #endif // ENABLE_PRESSURE
+    blink_tmr++;
+    break;
+    case 2: // const slow blink
+    if(b_state){
+      digitalWrite(DBG_LED,LOW);
+    } else{
+      digitalWrite(DBG_LED,HIGH);
+    }
+    if(blink_tmr>400){
+      b_state=!b_state;
+      blink_tmr=0;
+    }
+    blink_tmr++;
+    break; 
+    case 3://fast blink
+        if(b_state){
+      digitalWrite(DBG_LED,LOW);
+    } else{
+      digitalWrite(DBG_LED,HIGH);
+    }
+    if(blink_tmr>200){
+      b_state=!b_state;
+      blink_tmr=0;
+    }
+    blink_tmr++;
+    break;
+    default:
+    b_code=0;
+    break;
+  }
 }
 
 // Function to receive serial data with end marker
@@ -192,11 +214,11 @@ int convertToInt(float value) {
   return intValue;
 }
 
-void control_callback(float servo1, float servo2, float servo3, int thruster){
+void control_callback(float servo1, float servo2, float servo3, int thruster,char sw_state){
   // Convert float (-90 to 90) to int centered around positive 90
   last_received = millis();
 
-  #ifdef ENABLE_SERVOS
+  if(ENABLE_SERVOS){
     int intFin1 = DEFAULT_SERVO_POSITION, intFin2 = DEFAULT_SERVO_POSITION, intFin3 = DEFAULT_SERVO_POSITION;
     
     intFin1 = convertToInt(servo1);
@@ -209,52 +231,26 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
     myServo1.writeMicroseconds(intFin1);
     myServo2.writeMicroseconds(intFin2);
     myServo3.writeMicroseconds(intFin3);
-  #endif
+  }
   
-  #ifdef ENABLE_THRUSTER
+  if(ENABLE_THRUSTER){
     int usecThruster = map(thruster, THRUSTER_IN_MIN, THRUSTER_IN_MAX, THRUSTER_OUT_US_MIN, THRUSTER_OUT_US_MAX);
     myThruster.writeMicroseconds(usecThruster); //Thruster Value from 1100-1900
-  #endif // ENABLE_THRUSTER
+  }
 
-  
-  // Print the results for debugging
-  #ifdef ENABLE_BT_DEBUG
-      Serial.print("Received servo1: ");
-      Serial.print(servo1);
-      Serial.print(", servo2: ");
-      Serial.print(servo2);
-      Serial.print(", servo3: ");
-      Serial.print(servo3);
-      Serial.print(", thruster: ");
-      Serial.println(thruster);
-    #endif
+  digitalWrite(PWR_RELAY,sw_state==1);
 }
 
 // Function to parse and execute NMEA command
 void parseData() {
   float servo1, servo2, servo3;
   int thruster;
-
-  if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d", &servo1, &servo2, &servo3, &thruster) == 4) {
-    control_callback(servo1, servo2, servo3, thruster);
+  char sw_state;
+  if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d,%c", &servo1, &servo2, &servo3, &thruster,&pwr_sw) == 5) {
+    control_callback(servo1, servo2, servo3, thruster,sw_state);
   }
 }
 
-/**
- * Reads the pressure sensor data. This function reads the pressure sensor data
- * and publishes it to the micro-ROS agent.
- */
-void read_pressure() {
-
-  myPressure.read();
-  pressure = myPressure.pressure(conversionFactor);
-  temperature = myPressure.temperature();
-
-  Serial.print("$DEPTH,");
-  Serial.print(pressure,1);
-  Serial.print(",");
-  Serial.println(temperature, 1);
-}
 
 
 /**
@@ -265,8 +261,8 @@ void read_battery() {
 
   // we did some testing to determine the below params, but
   // it's possible they are not completely accurate
-  float voltage = (analogRead(BATT_V_SENSE) * 0.03437) + 0.68;
-  float current = (analogRead(CURR_SENSE) * 0.122) - 11.95;
+  float voltage = (analogRead(BATT_V_SENSE) * 5.7);
+  float current = (analogRead(CURR_SENSE) * 0.0264);
 
   // publish the battery data
   Serial.print("$BATTE,");
@@ -277,8 +273,7 @@ void read_battery() {
 
 
 /**
- * Reads the leak sensor data. This function reads the leak sensor data
- * and publishes it to the micro-ROS agent.
+ * Reads the leak sensor data. This function reads the leak sensor data and prints it over serial
  */
 void read_leak() {
 
@@ -298,35 +293,25 @@ void full_loop() {
   }
   delay(5); // Adjust the delay as needed
 
-  #ifdef ENABLE_LEAK
+  if(ENABLE_LEAK){
     read_leak();
-  #endif // ENABLE_LEAK
+  }
 
-  #ifdef ENABLE_PRESSURE
-    read_pressure();
-  #endif // ENABLE_PRESSURE
 
-  #ifdef ENABLE_BATTERY
+  if(ENABLE_BATTERY){
     read_battery();
-  #endif // ENABLE_BATTERY
+  }
 
       // fail safe for agent disconnect
   if (millis() - last_received > ACTUATOR_TIMEOUT) {
-
-    #ifdef ENABLE_SERVOS
+    if(ENABLE_SERVOS){
         myServo1.write(DEFAULT_SERVO_POSITION);
         myServo2.write(DEFAULT_SERVO_POSITION);
         myServo3.write(DEFAULT_SERVO_POSITION);
-    #endif // ENABLE_SERVOS
-
-    #ifdef ENABLE_THRUSTER
+    }
+    if(ENABLE_THRUSTER){
         myThruster.writeMicroseconds(THRUSTER_DEFAULT_OUT);
-    #endif // ENABLE_THRUSTER
-
-    #ifdef ENABLE_BT_DEBUG
-        Serial.println(
-            "[INFO] No command received in timeout, stopping actuators");
-    #endif // ENABLE_BT_DEBUG
+    }
   }
 }
 
@@ -347,15 +332,7 @@ void sweep_loop(){
 
 
 void loop(){
-
-  // blink the indicator light
-  if (millis() % 1000 < 250) {
-    digitalWrite(DBG_LED, LOW);
-  } else {
-    digitalWrite(DBG_LED, HIGH);
-  }
-
-
+  blink_callback();
   // sweep_loop();
   full_loop();
 }
