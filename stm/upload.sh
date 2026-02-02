@@ -17,7 +17,15 @@ sudo pinctrl set $STM_RST_GPIO op dh
 PORT=/dev/ttyS0
 STM32CP_CLI=STM32_Programmer.sh
 export PATH="$HOME/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin":"$PATH"
-FILEPATH="~/mcu_ws/stm/.pio/build/disco_f030r8/" #TODO: finish find the actual path
+case $1 in
+    "")
+        FILEPATH="~/mcu_ws/stm/.pio/build/disco_f030r8/" #TODO: finish find the actual path
+        ;;
+    *)
+        FILEPATH=$1
+        ;;
+esac
+
 if ! command -v $STM32CP_CLI >/dev/null 2>&1; then
     echo "STM32_Programmer.sh not found, please install it and/or add it to PATH"
     exit 0

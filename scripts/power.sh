@@ -1,7 +1,6 @@
 #!/bin/bash
-# Created by Nelson Durrant, Sep 2024
-#
-# Toggles the power state of the Teensy 4.1
+# Created by Eli Gaskin Jan 2026
+# specifying "on" will reset the microcontroller, specifying "off" will simply power off/reset the mcu
 # - Specify a power state using 'bash power.sh <state>'
 
 function printInfo {

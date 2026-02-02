@@ -1,9 +1,10 @@
 #!/bin/bash
 # Created by Eli Gaskin Jan 2026
-# detects whether hardware is on the CM5 (mainboard) or pi 5 (old) and builds for the respective solution
+# chooses whether to upload for the STM32 or teensy based off of UCONTROLLER variable set in cougrc
 #using -f will allow you to force a certain upload method
 
-# TODO: IMPLEMENT STM UPLOADING, teensy testing
+
+# TODO: testing
 
 TEENSY_DIRECTORY="~/mcu_ws/teensy"
 STM_DIRECTORY="~/mcu_ws/stm"
@@ -31,7 +32,14 @@ else
         echo "building for stm32"
         cd $STM_DIRECTORY
         # build arg to signal that it's being built on the actual board/docker container
-        pio run -t upload --program-arg "ONBOARD" 
+        case $1 in
+            "")
+                pio run -t upload --program-arg "ONBOARD" 
+                ;;
+            *)
+                bash $STM_DIRECTORY/upload.sh $1
+                ;;
+        esac
     else
         echo "building for teensy 4.1"
         cd $TEENSY_DIRECTORY
@@ -42,7 +50,7 @@ else
                 ;;
             *)
                 bash $TEENSY_DIRECTORY/program_mode.sh
-                cd $TEENSY_DIRECTORY/../firmware_options
+                cd $TEENSY_DIRECTORY/../firmware_options/teensy
                 tycmd upload $1
                 ;;
         esac
