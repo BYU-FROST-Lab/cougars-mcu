@@ -246,7 +246,7 @@ void parseData() {
   float servo1, servo2, servo3;
   int thruster;
   char sw_state;
-  if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d,%c", &servo1, &servo2, &servo3, &thruster,&pwr_sw) == 5) {
+  if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d,%c", &servo1, &servo2, &servo3, &thruster,&sw_state) == 5) {
     control_callback(servo1, servo2, servo3, thruster,sw_state);
   }
 }
