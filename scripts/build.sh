@@ -2,8 +2,8 @@
 # Created by Eli Gaskin Jan 2026
 # detects whether hardware is on the CM5 (mainboard) or pi 5 (old) and builds for the respective solution
 #using -f will allow you to force a certain build
-TEENSY_DIRECTORY="~/teensy_ws/teensy"
-STM_DIRECTORY="~/teensy_ws/stm"
+TEENSY_DIRECTORY="~/mcu_ws/teensy"
+STM_DIRECTORY="~/mcu_ws/stm"
 
 if [[ "$1" = "-f" ]]; then
     read -p "forcing build, input 1 to build for the stm32 or 2 to build for the teensy " buildop

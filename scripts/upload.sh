@@ -5,8 +5,8 @@
 
 # TODO: IMPLEMENT STM UPLOADING, teensy testing
 
-TEENSY_DIRECTORY="~/teensy_ws/teensy"
-STM_DIRECTORY="~/teensy_ws/stm"
+TEENSY_DIRECTORY="~/mcu_ws/teensy"
+STM_DIRECTORY="~/mcu_ws/stm"
 if [ "$1" = "-f" ]; then
     read -p "forcing upload, input 1 to build for the stm32 or 2 to build for the teensy " buildop
     case $buildop in
