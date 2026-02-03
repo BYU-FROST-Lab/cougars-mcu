@@ -138,9 +138,13 @@ void setup() {
 }
 
 void blink_code(uint8_t code){
+  if(code>4){ //maintain state
+
+  }else{
   b_code=code;
   b_state=0;
   blink_tmr=0;
+  }
 }
 
 void blink_callback(){
@@ -214,7 +218,7 @@ int convertToInt(float value) {
   return intValue;
 }
 
-void control_callback(float servo1, float servo2, float servo3, int thruster,char sw_state){
+void control_callback(float servo1, float servo2, float servo3, int thruster){
   // Convert float (-90 to 90) to int centered around positive 90
   last_received = millis();
 
@@ -238,7 +242,7 @@ void control_callback(float servo1, float servo2, float servo3, int thruster,cha
     myThruster.writeMicroseconds(usecThruster); //Thruster Value from 1100-1900
   }
 
-  digitalWrite(PWR_RELAY,sw_state==1);
+  
 }
 
 // Function to parse and execute NMEA command
@@ -246,8 +250,12 @@ void parseData() {
   float servo1, servo2, servo3;
   int thruster;
   char sw_state;
-  if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d,%c", &servo1, &servo2, &servo3, &thruster,&sw_state) == 5) {
-    control_callback(servo1, servo2, servo3, thruster,sw_state);
+  if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d", &servo1, &servo2, &servo3, &thruster) == 4) {
+    control_callback(servo1, servo2, servo3, thruster);
+  }
+  if(sscanf(inputBuffer, "$CONTR2,%c,%c",&sw_state,&b_code)==2){ //seperate function for stm32 functionality, any number greater than 4 to b_code will leave it as is
+    digitalWrite(PWR_RELAY,sw_state==1);
+    blink_code(b_code);
   }
 }
 
