@@ -1,5 +1,6 @@
 #!/bin/bash
 # Created by Eli Gaskin Jan 2026
+#resets or turns off the microcontroller specified by $UCONTROLLER in cougrc
 # specifying "on" will reset the microcontroller, specifying "off" will simply power off/reset the mcu
 # - Specify a power state using 'bash power.sh <state>'
 

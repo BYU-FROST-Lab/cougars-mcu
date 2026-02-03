@@ -1,7 +1,7 @@
 #!/bin/bash
 # Created by Eli Gaskin Jan 2026
-# detects whether hardware is on the CM5 (mainboard) or pi 5 (old) and builds for the respective solution
-#using -f will allow you to force a certain build
+#Builds firmware for the target mcu using the $UCONTROLLER variable set in cougrc. forcable using -f
+
 TEENSY_DIRECTORY="~/mcu_ws/teensy"
 STM_DIRECTORY="~/mcu_ws/stm"
 

@@ -1,7 +1,6 @@
 #!/bin/bash
 # Created by Eli Gaskin Jan 2026
-# chooses whether to upload for the STM32 or teensy based off of UCONTROLLER variable set in cougrc
-#using -f will allow you to force a certain upload method
+#uploads firmware to the target microcontroller set by $UCONTROLLER in cougrc, forcable using -f
 
 
 # TODO: testing
@@ -9,7 +8,7 @@
 TEENSY_DIRECTORY="~/mcu_ws/teensy"
 STM_DIRECTORY="~/mcu_ws/stm"
 if [[ "$1" = "-f" ]]; then
-    read -p "forcing upload, input 1 to build for the stm32 or 2 to build for the teensy " buildop
+    read -p "forcing upload, input 1 to upload to the stm32 or 2 for the teensy " buildop
     case $buildop in
     1)
         echo "uploading to the stm32"
