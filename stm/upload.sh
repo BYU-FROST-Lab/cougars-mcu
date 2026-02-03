@@ -14,7 +14,6 @@ sudo pinctrl set $STM_RST_GPIO op dh
 #TODO: ensure UART configuration
 #append stm32prog 
 #UART 0 as of board version B, TODO: check if this connection works fs
-PORT=/dev/ttyS0
 STM32CP_CLI=STM32_Programmer.sh
 export PATH="$HOME/STMicroelectronics/STM32Cube/STM32CubeProgrammer/bin":"$PATH"
 case $1 in
@@ -31,7 +30,7 @@ if ! command -v $STM32CP_CLI >/dev/null 2>&1; then
     exit 0
 fi
 #defaults for most options, quiet: no progress bar
-${STM32CP_CLI} --connect port="${PORT}" "--erase" --quietMode --download "${FILEPATH}"
+${STM32CP_CLI} --connect port="${UCONTROLLER_SERIAL}" "--erase" --quietMode --download "${FILEPATH}"
 sudo pinctrl $STM_BOOT0_GPIO op dl
 sudo pinctrl $STM_RST_GPIO op dl
 sudo pinctrl $STM_RST_GPIO op dh
