@@ -254,8 +254,8 @@ void parseData() {
     control_callback(servo1, servo2, servo3, thruster);
   }
   if(sscanf(inputBuffer, "$CONTR2,%c,%c",&sw_state,&b_code)==2){ //seperate function for stm32 functionality, any number greater than 4 to b_code will leave it as is
-    digitalWrite(PWR_RELAY,sw_state==1);
-    blink_code(b_code);
+    digitalWrite(PWR_RELAY,sw_state=='1');
+    blink_code(b_code - '0');
   }
 }
 

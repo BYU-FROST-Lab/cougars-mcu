@@ -29,4 +29,4 @@ else
         cd $TEENSY_DIRECTORY
     fi
 fi
-pio run #build
+pio run --program-arg "ONBOARD" #build
