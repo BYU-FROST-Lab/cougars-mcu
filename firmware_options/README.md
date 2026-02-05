@@ -1,1 +1,0 @@
-Custom hex files added here can be uploaded to the Teensy boards using the 'upload.sh' script.
