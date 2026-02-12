@@ -6,7 +6,7 @@
 #install stm32flash via apt
 
 #boot0, rst gpio defs in cougrc
-if [[ -v $UCONTROLLER_SERIAL ]]; then
+if [[ -v UCONTROLLER_SERIAL ]]; then
     #set boot0 high, reset, upload, set boot0 low, reset again
     sudo pinctrl set $STM_BOOT0_GPIO op dh
     sudo pinctrl set $STM_RST_GPIO op dl
