@@ -5,8 +5,8 @@
 
 # TODO: testing
 
-TEENSY_DIRECTORY="~/mcu_ws/teensy"
-STM_DIRECTORY="~/mcu_ws/stm"
+TEENSY_DIRECTORY=~/mcu_ws/teensy
+STM_DIRECTORY=~/mcu_ws/stm
 if [[ "$1" = "-f" ]]; then
     read -p "forcing upload, input 1 to upload to the stm32 or 2 for the teensy " buildop
     case $buildop in
@@ -27,7 +27,7 @@ if [[ "$1" = "-f" ]]; then
         exit 0
     esac
 else
-    if [[ $UCONTROLLER = "STM" ]];
+    if [[ $UCONTROLLER = "STM" ]]; then
         echo "building for stm32"
         cd $STM_DIRECTORY
         # build arg to signal that it's being built on the actual board/docker container
