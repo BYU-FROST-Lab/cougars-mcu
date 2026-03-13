@@ -18,7 +18,7 @@ function printError {
 
 case $1 in
     "on")
-        if [[ $UCONTROLLER = "STM" ]];
+        if [[ $UCONTROLLER = "STM" ]]; then
             echo "resetting stm32, turning on via pin $STM_RST_GPIO"
             sudo pinctrl set $STM_RST_GPIO op dl
             sleep 0.1
@@ -32,7 +32,7 @@ case $1 in
 
         ;;
     "off")
-        if [[ $UCONTROLLER = "STM" ]];
+        if [[ $UCONTROLLER = "STM" ]]; then
             echo "turning off stm32 via pin $STM_RST_GPIO"
             sudo pinctrl set $STM_RST_GPIO op dl
         else

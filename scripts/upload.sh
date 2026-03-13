@@ -5,8 +5,17 @@
 
 # TODO: testing
 
-TEENSY_DIRECTORY=~/mcu_ws/teensy
-STM_DIRECTORY=~/mcu_ws/stm
+TEENSY_DIRECTORY=/home/frostlab/cougars-frost/mcu_ws/teensy
+STM_DIRECTORY=/home/frostlab/cougars-frost/mcu_ws/stm
+
+if command -v pio >/dev/null 2>&1; then
+    PIO_CMD="pio"
+elif [[ -x "$HOME/.platformio/penv/bin/platformio" ]]; then
+    PIO_CMD="$HOME/.platformio/penv/bin/platformio"
+else
+    echo "PlatformIO not found. Install it or add pio/platformio to PATH."
+    exit 1
+fi
 if [[ "$1" = "-f" ]]; then
     read -p "forcing upload, input 1 to upload to the stm32 or 2 for the teensy " buildop
     case $buildop in
@@ -14,7 +23,7 @@ if [[ "$1" = "-f" ]]; then
         echo "uploading to the stm32"
         cd $STM_DIRECTORY
         # build arg to signal that it's being built on the actual board/docker container
-        pio run -t upload --program-arg "ONBOARD" 
+        "$PIO_CMD" run -t upload --program-arg "ONBOARD" 
         ;;
     2)
         cd $TEENSY_DIRECTORY
@@ -33,7 +42,7 @@ else
         # build arg to signal that it's being built on the actual board/docker container
         case $1 in
             "")
-                pio run -t upload --program-arg "ONBOARD" 
+                "$PIO_CMD" run -t upload --program-arg "ONBOARD" 
                 ;;
             *)
                 bash $STM_DIRECTORY/upload.sh $1

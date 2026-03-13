@@ -2,8 +2,17 @@
 # Created by Eli Gaskin Jan 2026
 #Builds firmware for the target mcu using the $UCONTROLLER variable set in cougrc. forcable using -f
 
-TEENSY_DIRECTORY=~/mcu_ws/teensy
-STM_DIRECTORY=~/mcu_ws/stm
+TEENSY_DIRECTORY=/home/frostlab/cougars-frost/mcu_ws/teensy
+STM_DIRECTORY=/home/frostlab/cougars-frost/mcu_ws/stm
+
+if command -v pio >/dev/null 2>&1; then
+    PIO_CMD="pio"
+elif [[ -x "$HOME/.platformio/penv/bin/platformio" ]]; then
+    PIO_CMD="$HOME/.platformio/penv/bin/platformio"
+else
+    echo "PlatformIO not found. Install it or add pio/platformio to PATH."
+    exit 1
+fi
 
 if [[ "$1" = "-f" ]]; then
     read -p "forcing build, input 1 to build for the stm32 or 2 to build for the teensy " buildop
@@ -29,4 +38,4 @@ else
         cd $TEENSY_DIRECTORY
     fi
 fi
-pio run --program-arg "ONBOARD" #build
+"$PIO_CMD" run --program-arg "ONBOARD" #build
