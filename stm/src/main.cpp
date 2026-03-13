@@ -1,7 +1,5 @@
 #include <Arduino.h>
 #include <Servo.h> //arduinostm32 framework default library
-#include <SoftwareSerial.h>
-#include <Wire.h>
 
 #ifdef ONBOARD //build arg passed to platformio in the upload script
 
@@ -122,9 +120,6 @@ void setup() {
     delay(7000);
   }
 
-  // Setup Depth sensor
-  Wire.begin();
-  Wire.setClock(I2C_RATE);
 
   if(ENABLE_BATTERY){
       pinMode(CURR_SENSE, INPUT);
