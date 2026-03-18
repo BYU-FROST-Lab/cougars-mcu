@@ -92,6 +92,9 @@ void blink_callback();
 void setup() {
     blink_code(0);
     blink_callback();
+  // Custom F030K6 board routes UART to PA9/PA10, not the Nucleo default pins.
+  Serial.setTx(PA9);
+  Serial.setRx(PA10);
     Serial.begin(SERIAL_BAUD_RATE);
     Serial.print("microcontroller begun");
   pinMode(DBG_LED, OUTPUT);
