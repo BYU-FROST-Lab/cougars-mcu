@@ -42,6 +42,17 @@
 #define STROBE PA11
 #define PWR_RELAY PA15
 #define CURR_SENSE PB0
+#define WATER_SENSOR PB1 // underwater/submerged sensor, drives the DVL/modem relay and strobe in AUTO mode
+
+// underwater sensor polarity: digitalRead(WATER_SENSOR) reads this value when submerged
+#define WATER_SENSOR_WET_STATE HIGH
+
+// relay/strobe mode selection, settable over serial with $RELAY,<c> and $STROBE,<c> (c = '0' off, '1' on, 'A' auto)
+#define MODE_OFF 0
+#define MODE_ON 1
+#define MODE_AUTO 2
+
+#define STROBE_BLINK_MS 500 // nav light blink half-period when active
 
 
 // actuator conversion values
@@ -82,16 +93,15 @@ char inputBuffer[BUFFER_SIZE];
 int bufferIndex = 0;
 bool newData = false;
 
-uint16_t blink_tmr=0;
-uint8_t b_code=0;
-uint8_t b_state=0;
+// DVL/modem relay and strobe (nav light) mode state, default to following the underwater sensor
+uint8_t relay_mode = MODE_AUTO;
+uint8_t strobe_mode = MODE_AUTO;
+bool strobe_state = false;
+unsigned long strobe_last_toggle = 0;
 
-void blink_code(uint8_t code);
-void blink_callback();
+void update_relay_and_strobe();
 
 void setup() {
-    blink_code(0);
-    blink_callback();
   // Custom F030K6 board routes UART to PA9/PA10, not the Nucleo default pins.
   Serial.setTx(PA9);
   Serial.setRx(PA10);
@@ -100,6 +110,9 @@ void setup() {
   pinMode(DBG_LED, OUTPUT);
   pinMode(PWR_RELAY,OUTPUT);
   digitalWrite(PWR_RELAY,0);
+  pinMode(WATER_SENSOR, INPUT);
+  pinMode(STROBE, OUTPUT);
+  digitalWrite(STROBE, LOW);
 
   if(ENABLE_SERVOS){
     // Set up the servo and thruster pins
@@ -135,56 +148,37 @@ void setup() {
   
 }
 
-void blink_code(uint8_t code){
-  if(code>4){ //maintain state
+// Drives the DVL/modem relay, its DBG_LED indicator, and the strobe nav light
+// off of relay_mode/strobe_mode, falling back to the underwater sensor (WATER_SENSOR)
+// whenever a mode is set to MODE_AUTO.
+void update_relay_and_strobe(){
+  bool submerged = (digitalRead(WATER_SENSOR) == WATER_SENSOR_WET_STATE);
 
-  }else{
-  b_code=code;
-  b_state=0;
-  blink_tmr=0;
+  bool relay_on;
+  switch(relay_mode){
+    case MODE_ON: relay_on = true; break;
+    case MODE_OFF: relay_on = false; break;
+    default: relay_on = submerged; break; // MODE_AUTO
   }
-}
+  digitalWrite(PWR_RELAY, relay_on);
+  digitalWrite(DBG_LED, relay_on); // debug LED mirrors the DVL/modem relay state
 
-void blink_callback(){
-  switch(b_code){
-    case 0: //nominal, const on
-    digitalWrite(DBG_LED,HIGH);
-    break;
-    case 1: //blink once, return to state 0
-    digitalWrite(DBG_LED,LOW);
-    if(blink_tmr>200){
-      b_code=0;
-      blink_tmr=0;
+  bool strobe_active;
+  switch(strobe_mode){
+    case MODE_ON: strobe_active = true; break;
+    case MODE_OFF: strobe_active = false; break;
+    default: strobe_active = submerged; break; // MODE_AUTO
+  }
+
+  if(strobe_active){
+    if(millis() - strobe_last_toggle >= STROBE_BLINK_MS){
+      strobe_last_toggle = millis();
+      strobe_state = !strobe_state;
+      digitalWrite(STROBE, strobe_state);
     }
-    blink_tmr++;
-    break;
-    case 2: // const slow blink
-    if(b_state){
-      digitalWrite(DBG_LED,LOW);
-    } else{
-      digitalWrite(DBG_LED,HIGH);
-    }
-    if(blink_tmr>400){
-      b_state=!b_state;
-      blink_tmr=0;
-    }
-    blink_tmr++;
-    break; 
-    case 3://fast blink
-        if(b_state){
-      digitalWrite(DBG_LED,LOW);
-    } else{
-      digitalWrite(DBG_LED,HIGH);
-    }
-    if(blink_tmr>200){
-      b_state=!b_state;
-      blink_tmr=0;
-    }
-    blink_tmr++;
-    break;
-    default:
-    b_code=0;
-    break;
+  } else {
+    strobe_state = false;
+    digitalWrite(STROBE, LOW);
   }
 }
 
@@ -243,17 +237,31 @@ void control_callback(float servo1, float servo2, float servo3, int thruster){
   
 }
 
+// Applies a mode char ('0' off, '1' on, 'A' auto/follow underwater sensor) to a mode variable.
+// Unrecognized chars are ignored, leaving the mode unchanged.
+void apply_mode_char(uint8_t &mode, char mode_char){
+  switch(mode_char){
+    case '0': mode = MODE_OFF; break;
+    case '1': mode = MODE_ON; break;
+    case 'A': mode = MODE_AUTO; break;
+  }
+}
+
 // Function to parse and execute NMEA command
 void parseData() {
   float servo1, servo2, servo3;
   int thruster;
-  char sw_state;
+  char mode_char;
   if (sscanf(inputBuffer, "$CONTR,%f,%f,%f,%d", &servo1, &servo2, &servo3, &thruster) == 4) {
     control_callback(servo1, servo2, servo3, thruster);
   }
-  if(sscanf(inputBuffer, "$CONTR2,%c,%c",&sw_state,&b_code)==2){ //seperate function for stm32 functionality, any number greater than 4 to b_code will leave it as is
-    digitalWrite(PWR_RELAY,sw_state=='1');
-    blink_code(b_code - '0');
+  // $RELAY,<c> sets the DVL/modem power relay mode: '0' off, '1' on, 'A' auto (follow WATER_SENSOR)
+  if(sscanf(inputBuffer, "$RELAY,%c", &mode_char) == 1){
+    apply_mode_char(relay_mode, mode_char);
+  }
+  // $STROBE,<c> sets the nav light strobe mode: '0' off, '1' on (blinking), 'A' auto (follow WATER_SENSOR)
+  if(sscanf(inputBuffer, "$STROBE,%c", &mode_char) == 1){
+    apply_mode_char(strobe_mode, mode_char);
   }
 }
 
@@ -338,7 +346,7 @@ void sweep_loop(){
 
 
 void loop(){
-  blink_callback();
+  update_relay_and_strobe();
   // sweep_loop();
   full_loop();
 }
