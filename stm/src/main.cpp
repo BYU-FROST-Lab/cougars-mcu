@@ -53,6 +53,7 @@
 #define MODE_AUTO 2
 
 #define STROBE_BLINK_MS 500 // nav light blink half-period when active
+#define STROBE_LEAK_BLINK_MS 50 // fast blink half-period when a leak is detected, overrides strobe_mode entirely
 
 
 // actuator conversion values
@@ -170,8 +171,17 @@ void update_relay_and_strobe(){
     default: strobe_active = submerged; break; // MODE_AUTO
   }
 
+  // A detected leak always wins: force the strobe on and blinking fast,
+  // ignoring strobe_mode/relay logic entirely.
+  unsigned long blink_period = STROBE_BLINK_MS;
+  bool leak_detected = ENABLE_LEAK && (digitalRead(LEAK) == HIGH);
+  if(leak_detected){
+    strobe_active = true;
+    blink_period = STROBE_LEAK_BLINK_MS;
+  }
+
   if(strobe_active){
-    if(millis() - strobe_last_toggle >= STROBE_BLINK_MS){
+    if(millis() - strobe_last_toggle >= blink_period){
       strobe_last_toggle = millis();
       strobe_state = !strobe_state;
       digitalWrite(STROBE, strobe_state);
