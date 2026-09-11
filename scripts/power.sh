@@ -20,9 +20,12 @@ case $1 in
     "on")
         if [[ $UCONTROLLER = "STM" ]]; then
             echo "resetting stm32, turning on via pin $STM_RST_GPIO"
-            sudo pinctrl set $STM_RST_GPIO op dl
-            sleep 0.1
-            sudo pinctrl set $STM_RST_GPIO op dh
+            sudo pinctrl set $STM_BOOT0_GPIO op dl
+	    sleep 0.1
+	    sudo pinctrl set $STM_RST_GPIO op dl
+	    sleep 0.1
+	    sudo pinctrl set $STM_RST_GPIO op dh
+
         else
             echo "resetting, turning on Teensy via pin $POWER_PIN"
             sudo pinctrl set $POWER_PIN op dl
