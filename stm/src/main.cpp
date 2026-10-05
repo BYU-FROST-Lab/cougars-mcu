@@ -71,6 +71,7 @@
 // sensor update rates
 #define BATTERY_MS 1000 // arbitrary
 #define LEAK_MS 1000    // arbitrary
+#define LOOP_DELAY_MS 10 // arbitrary, just to not hog the CPU
 
 #define ACTUATOR_TIMEOUT 5000
 // time of last received command (used as a fail safe)
@@ -315,7 +316,7 @@ void full_loop() {
     parseData();
     newData = false;
   }
-  delay(5); // Adjust the delay as needed
+  delay(LOOP_DELAY_MS); // Adjust the delay as needed
 
   if(ENABLE_LEAK){
     read_leak();
